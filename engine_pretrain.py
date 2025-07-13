@@ -27,7 +27,8 @@ def train_one_epoch(model: torch.nn.Module,
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 20
+    print_freq = 1
+    # DPELEG print_freq = 20
 
     accum_iter = args.accum_iter
 
@@ -44,7 +45,8 @@ def train_one_epoch(model: torch.nn.Module,
 
         samples = samples.to(device, non_blocking=True)
 
-        with torch.cuda.amp.autocast():
+        # DPELEG with torch.cuda.amp.autocast():
+        with torch.autograd.profiler.record_function("forward"):
             loss, _, _ = model(samples, mask_ratio=args.mask_ratio)
 
         loss_value = loss.item()
@@ -54,12 +56,12 @@ def train_one_epoch(model: torch.nn.Module,
             sys.exit(1)
 
         loss /= accum_iter
-        loss_scaler(loss, optimizer, parameters=model.parameters(),
-                    update_grad=(data_iter_step + 1) % accum_iter == 0)
-        if (data_iter_step + 1) % accum_iter == 0:
-            optimizer.zero_grad()
+        # DPELEG loss_scaler(loss, optimizer, parameters=model.parameters(),
+        # DPELEG             update_grad=(data_iter_step + 1) % accum_iter == 0)
+        # DPELEG if (data_iter_step + 1) % accum_iter == 0:
+        # DPELEG     optimizer.zero_grad()
 
-        torch.cuda.synchronize()
+        # DPELEG torch.cuda.synchronize()
 
         metric_logger.update(loss=loss_value)
 

@@ -19,13 +19,15 @@ from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
+import torch.optim as optim
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 import timm
 
-assert timm.__version__ == "0.3.2"  # version check
-import timm.optim.optim_factory as optim_factory
+# DPELEG assert timm.__version__ == "0.3.2"  # version check
+# DPELEG import timm.optim.optim_factory as optim_factory
+import timm.optim as optim
 
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
@@ -33,7 +35,7 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import models_mae
 
 from engine_pretrain import train_one_epoch
-
+from ct_dataset import CTDataset
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -100,6 +102,10 @@ def get_args_parser():
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
+    parser.add_argument("--job_dir", default="", type=str, help="Job dir. Leave empty for automatic.")
+    parser.add_argument('--use_ct', action='store_true')
+    parser.add_argument('--number_of_ct_patients', default=5, type=int,
+                        choices=[5, 10, 131], help='5, 10, 131')
 
     return parser
 
@@ -123,20 +129,35 @@ def main(args):
     transform_train = transforms.Compose([
             transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    dataset_train = datasets.ImageFolder(os.path.join(args.data_path, 'train'), transform=transform_train)
+            transforms.ToTensor(),])
+            # DPELEG skip normalization
+            # transforms.Lambda(lambda x: x.repeat(3, 1, 1)),  # Repeat the single channel three times
+            # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+
+    # DPELEG
+    if args.use_ct:
+        dataset_dir = f"datasets/liver_dataset_{args.number_of_ct_patients}.npz"
+        path_to_dataset = os.path.join(args.job_dir, dataset_dir)
+        dataset_train = CTDataset(path_to_dataset, transform=transform_train)
+        dataset_train.split_train_test(args.number_of_ct_patients)
+        # dataset_train.test_transform()
+    else:
+        path_to_dataset = os.path.join(args.data_path, 'train')
+        dataset_train = datasets.ImageFolder(path_to_dataset, transform=transform_train)
+
     print(dataset_train)
 
-    if True:  # args.distributed:
-        num_tasks = misc.get_world_size()
-        global_rank = misc.get_rank()
-        sampler_train = torch.utils.data.DistributedSampler(
-            dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
-        )
-        print("Sampler_train = %s" % str(sampler_train))
-    else:
-        sampler_train = torch.utils.data.RandomSampler(dataset_train)
+    # DPELEG we don't use distributed, commenting out
+    # if True:  # args.distributed:
+    #     num_tasks = misc.get_world_size()
+    #     global_rank = misc.get_rank()
+    #     sampler_train = torch.utils.data.DistributedSampler(
+    #         dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
+    #     )
+    #     print("Sampler_train = %s" % str(sampler_train))
+    # else:
+    global_rank = misc.get_rank() # DPELEG
+    sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
     if global_rank == 0 and args.log_dir is not None:
         os.makedirs(args.log_dir, exist_ok=True)
@@ -144,13 +165,17 @@ def main(args):
     else:
         log_writer = None
 
-    data_loader_train = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        pin_memory=args.pin_mem,
-        drop_last=True,
-    )
+    # DPELEG
+    if args.use_ct:
+        data_loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True)
+    else:
+        data_loader_train = torch.utils.data.DataLoader(
+            dataset_train, sampler=sampler_train,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_mem,
+            drop_last=True,
+        )
     
     # define the model
     model = models_mae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
@@ -176,8 +201,10 @@ def main(args):
         model_without_ddp = model.module
     
     # following timm: set wd as 0 for bias and norm layers
-    param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
-    optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
+    # DPELEG param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+    # DPELEG optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
+    param_groups = model.parameters()
+    optimizer = torch.optim.AdamW(param_groups, lr=args.lr, weight_decay=args.weight_decay, betas=(0.9, 0.95))
     print(optimizer)
     loss_scaler = NativeScaler()
 

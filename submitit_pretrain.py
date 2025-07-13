@@ -30,19 +30,20 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_shared_folder() -> Path:
+def get_shared_folder(args) -> Path:
     user = os.getenv("USER")
-    if Path("/checkpoint/").is_dir():
-        p = Path(f"/checkpoint/{user}/experiments")
+    job_dir=args.job_dir
+    if Path(job_dir).is_dir():
+        p = Path(f"{job_dir}/checkpoint/{user}/experiments")
         p.mkdir(exist_ok=True)
         return p
     raise RuntimeError("No shared folder available")
 
 
-def get_init_file():
+def get_init_file(args):
     # Init file must not exist, but it's parent dir must exist.
-    os.makedirs(str(get_shared_folder()), exist_ok=True)
-    init_file = get_shared_folder() / f"{uuid.uuid4().hex}_init"
+    os.makedirs(str(get_shared_folder(args)), exist_ok=True)
+    init_file = get_shared_folder(args) / f"{uuid.uuid4().hex}_init"
     if init_file.exists():
         os.remove(str(init_file))
     return init_file
@@ -117,7 +118,7 @@ def main():
 
     executor.update_parameters(name="mae")
 
-    args.dist_url = get_init_file().as_uri()
+    args.dist_url = get_init_file(args).as_uri()
     args.output_dir = args.job_dir
 
     trainer = Trainer(args)

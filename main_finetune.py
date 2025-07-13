@@ -23,9 +23,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 import timm
 
-assert timm.__version__ == "0.3.2" # version check
-from timm.models.layers import trunc_normal_
-from timm.data.mixup import Mixup
+#assert timm.__version__ == "0.3.2" # version check
+#from timm.models.layers import trunc_normal_
+#from timm.data.mixup import Mixup
+#from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+from timm.layers import trunc_normal_
+from timm.data import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 
 import util.lr_decay as lrd
