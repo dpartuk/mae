@@ -4,6 +4,8 @@ from torch.utils.data import Dataset
 import nibabel as nib
 import numpy as np
 from ct_visualizer import CTVisualizer
+from ct_masking import CTMask
+from ct_config import debug
 
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -23,6 +25,10 @@ class CTDataset(Dataset):
         self.Y_val = None
         self.X_test = None
         self.Y_test = None
+        self.X_train_masked = []
+        self.X_val_masked = []
+        self.X_test_masked = []
+        self.test_idx = []
 
         # number_of_ct_patients = 5
         # self.images, self.labels, self.patient_ids = self.load_dataset(f"datasets/liver_dataset_{number_of_ct_patients}.npz")
@@ -31,7 +37,8 @@ class CTDataset(Dataset):
         print(self.patient_ids)
         print('Len (X, Y, Patients):', len(self.images), len(self.labels), len(self.patient_ids))
         print(f'Sample Patient Shapes ({self.patient_ids[2]}): X[2] Y[2]:', self.images[2].shape, self.labels[2].shape)
-        self.print_samples()
+        if debug:
+            self.print_samples()
 
         # Load all images and labels
         # for root, dirs, files in os.walk(path):
@@ -54,6 +61,18 @@ class CTDataset(Dataset):
 
         return X_all, Y_all, patient_ids
 
+    def print_summary(self):
+        print("###### Summary of the dataset")
+        print("Number of patients: ", len(self.patient_ids))
+        print(f"Train X shape: {self.X_train.shape} Train Masked: {self.X_train_masked.shape}")
+        print(f"Train Y shape: {self.Y_train.shape}")
+        print(f"Val X shape: {self.X_val.shape} Val X Masked: {self.X_val_masked.shape}")
+        print(f"Val Y shape: {self.Y_val.shape}")
+        print(f"Test X shape: {self.X_test.shape} Test X Masked: {self.X_test_masked.shape}")
+        print(f"Test Y shape: {self.Y_test.shape}")
+        print("###### End Summary ##########")
+
+
     def print_samples(self):
         ctVisualizer = CTVisualizer()
 
@@ -63,6 +82,64 @@ class CTDataset(Dataset):
         for i in range(number_of_samples):
             print(f"Sample {i}: liver_{i}.nii.gz")
             ctVisualizer.display_XY_samples_v2(self.images[i], self.labels[i], max_slices=number_of_slices)
+
+    def print_XY_samples(self):
+        self.print_masked_samples(self.X_train, self.X_train_masked, "Train")
+        self.print_masked_samples(self.X_val, self.X_val_masked, "Validation")
+        self.print_masked_samples(self.X_test, self.X_test_masked, "Test")
+
+
+    def print_masked_samples(self, orig, masked, title):
+        number_of_samples = 4
+
+        fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(15, 10))
+        # Flatten the axes array for easy iteration
+        axes = axes.flatten()
+        i = 0
+
+        for i in range(number_of_samples):
+            img = orig[[i], :, :, :]
+            img = img.squeeze()
+            mask = masked[[i], :, :]
+            mask = mask.squeeze()
+
+            ax = axes[i*2]
+            ax.imshow(img, cmap='gray')
+            ax.set_facecolor('black')
+            ax.title.set_text(f"Image: {i}")
+
+            ax = axes[(i*2)+1]
+            ax.imshow(mask, cmap='gray')
+            ax.set_facecolor('black')
+            ax.title.set_text(f"Mask: {i}")
+            i += 1
+
+        fig.suptitle(title)
+        plt.show()
+
+        # plt.figure(figsize=(6, 3 * number_of_samples))
+
+        # for i in range(number_of_samples):
+        #     print(f"Sample Masked and Unmasked Train and Val")
+        #     img = self.X_train[[i], :, :, :]
+        #     img = img.squeeze()
+        #     mask = self.X_train_masked[[i], :, :]
+        #     mask = mask.squeeze()
+        #
+        #     plt.subplot(num_samples, 2, 2 * i + 1)
+        #     plt.imshow(img, cmap='gray')
+        #     plt.title(f"X[{i}] CT")
+        #     plt.axis('off')
+        #
+        #     plt.subplot(num_samples, 2, 2 * i + 2)
+        #     plt.imshow(mask, cmap='gray')
+        #     plt.title(f"X_Masked[{i}] CT")
+        #     plt.axis('off')
+        #
+        # plt.tight_layout()
+        # plt.show()
+
+
 
     def split_train_test(self, number_of_ct_patients):
         # Split patients into train, validation, test (by index)
@@ -79,6 +156,7 @@ class CTDataset(Dataset):
 
         self.X_test = np.concatenate([self.images[i] for i in test_idx])
         self.Y_test = np.concatenate([self.labels[i] for i in test_idx])
+        self.test_idx = test_idx
 
         print("Splits by patients:")
 
@@ -105,16 +183,51 @@ class CTDataset(Dataset):
         plt.show()
 
         # Convert the ndarray to a PIL Image
-        img = Image.fromarray(image, mode='L')
-        # Now you can use img as a PIL Image
-        img.show()
+        image_uint8 = (image * 255).astype(np.uint8)
+        plt.imshow(image_uint8, cmap='gray')
+        plt.show()
+
+        pil_image = Image.fromarray(image_uint8, mode='L')
+        plt.imshow(pil_image, cmap='gray')
+        plt.show()
+
+        # convert back to ndarray
+        image_from_pil = np.array(pil_image)
+        plt.imshow(image_from_pil, cmap='gray')
+        plt.show()
+
+    def mask_and_save(self):
+        masker = CTMask()
+        for idx, img in enumerate(self.X_train):
+            img = img.squeeze()
+            masked_img = masker.mask(img)
+            self.X_train_masked.append(masked_img)
+            if idx % 50 == 0:
+                print(f'Train Processed {idx}/{len(self.X_train)}')
+        self.X_train_masked = np.stack(self.X_train_masked, axis=0)
+
+        for idx, img in enumerate(self.X_val):
+            img = img.squeeze()
+            masked_img = masker.mask(img)
+            self.X_val_masked.append(masked_img)
+            if idx % 50 == 0:
+                print(f'Val Processed {idx}/{len(self.X_val)}')
+        self.X_val_masked = np.stack(self.X_val_masked, axis=0)
+
+        for idx, img in enumerate(self.X_test):
+            img = img.squeeze()
+            masked_img = masker.mask(img)
+            self.X_test_masked.append(masked_img)
+            if idx % 50 == 0:
+                print(f'Test Processed {idx}/{len(self.X_test)}')
+        self.X_test_masked = np.stack(self.X_test_masked, axis=0)
 
     def __len__(self):
         return len(self.X_train)
 
     def __getitem__(self, index):
         # (256, 256)
-        global image
+        # global image
         image_slice = self.X_train[index, ..., 0]
 
         # During pre-train, the label is the original image
@@ -139,6 +252,23 @@ class CTDataset(Dataset):
         plt.imshow(img, cmap='gray')
         # plt.imshow(image.squeeze(), cmap='gray')
         plt.show()
+
+        ###############
+        # using uint8 as type - suggested for Image conversion
+        image_uint8 = (image_slice * 255).astype(np.uint8)
+        plt.imshow(image_uint8, cmap='gray')
+        plt.show()
+
+        # convert and show 2d - testing view
+        pil_image = Image.fromarray(image_uint8, mode='L')
+        plt.imshow(pil_image, cmap='gray')
+        plt.show()
+
+        # convert back to ndarray
+        image_from_pil = np.array(pil_image)
+        plt.imshow(image_from_pil, cmap='gray')
+        plt.show()
+        #################
 
         # Apply any necessary preprocessing (e.g., normalization)
         if self.transform:
