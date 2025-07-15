@@ -64,6 +64,7 @@ class UNETRunner:
             if val_key in history_dict:
                 plt.plot(history_dict[val_key], label=f"Val {metric}")
 
+        ppid = os.getppid()
         plt.xlabel("Epoch")
         plt.ylabel("Value")
         plt.title("Training History")
