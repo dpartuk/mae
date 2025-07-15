@@ -34,9 +34,11 @@ class CTDataset(Dataset):
         # self.images, self.labels, self.patient_ids = self.load_dataset(f"datasets/liver_dataset_{number_of_ct_patients}.npz")
         self.images, self.labels, self.patient_ids = self.load_dataset(self.path)
 
-        print(self.patient_ids)
-        print('Len (X, Y, Patients):', len(self.images), len(self.labels), len(self.patient_ids))
-        print(f'Sample Patient Shapes ({self.patient_ids[2]}): X[2] Y[2]:', self.images[2].shape, self.labels[2].shape)
+        if debug:
+            print(self.patient_ids)
+            print('Len (X, Y, Patients):', len(self.images), len(self.labels), len(self.patient_ids))
+            print(f'Sample Patient Shapes ({self.patient_ids[2]}): X[2] Y[2]:', self.images[2].shape, self.labels[2].shape)
+
         if debug:
             self.print_samples()
 
@@ -202,24 +204,27 @@ class CTDataset(Dataset):
             img = img.squeeze()
             masked_img = masker.mask(img)
             self.X_train_masked.append(masked_img)
-            if idx % 50 == 0:
+            if idx % 500 == 0:
                 print(f'Train Processed {idx}/{len(self.X_train)}')
+        print(f'Completed Train Processed {idx+1}/{len(self.X_train)}')
         self.X_train_masked = np.stack(self.X_train_masked, axis=0)
 
         for idx, img in enumerate(self.X_val):
             img = img.squeeze()
             masked_img = masker.mask(img)
             self.X_val_masked.append(masked_img)
-            if idx % 50 == 0:
+            if idx % 500 == 0:
                 print(f'Val Processed {idx}/{len(self.X_val)}')
+        print(f'Completed Val Processed {idx+1}/{len(self.X_val)}')
         self.X_val_masked = np.stack(self.X_val_masked, axis=0)
 
         for idx, img in enumerate(self.X_test):
             img = img.squeeze()
             masked_img = masker.mask(img)
             self.X_test_masked.append(masked_img)
-            if idx % 50 == 0:
+            if idx % 500 == 0:
                 print(f'Test Processed {idx}/{len(self.X_test)}')
+        print(f'Completed Test Processed {idx+1}/{len(self.X_test)}')
         self.X_test_masked = np.stack(self.X_test_masked, axis=0)
 
     def __len__(self):

@@ -53,18 +53,17 @@ def main(args):
 
     job_dir = os.path.dirname(os.path.realpath(__file__))
     print(f'job dir: {job_dir}')
-    print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
-    print("{}".format(args).replace(', ', ',\n'))
+    # print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
+    # print("{}".format(args).replace(', ', ',\n'))
 
     # Load dataset and split to train, validation, test
     path_to_dataset = f"{job_dir}/{args.data_path}/liver_dataset_{ct_config.number_of_ct_patients}.npz"
     dataset_train = CTDataset(path_to_dataset)
-    dataset_train.split_train_test(args.number_of_ct_patients)
+    dataset_train.split_train_test(ct_config.number_of_ct_patients)
     dataset_train.mask_and_save()
     dataset_train.print_summary()
-    dataset_train.print_XY_samples()
-
-    print(dataset_train)
+    if ct_config.print_smaples:
+        dataset_train.print_XY_samples()
 
     # Training
     model_runner = UNETRunner(dataset_train)
