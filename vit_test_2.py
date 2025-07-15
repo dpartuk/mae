@@ -237,9 +237,15 @@ class MaskedViT(nn.Module):
         """Replace the decoder part of the model with a new decoder."""
         self.decoder = new_decoder
 
+    def load_weights(self, weights_path):
+        """Load pre-trained weights from a file path."""
+        self.load_state_dict(torch.load(weights_path))
+        return self
 
-# Example usage
-if __name__ == "__main__":
+
+
+
+def main():
     # Create a model
     model = MaskedViT(
         img_size=224,
@@ -412,8 +418,8 @@ if __name__ == "__main__":
             mask_ratio=0.75,
         )
 
-        # Load pretrained weights
-        pretrained_model.load_state_dict(torch.load("masked_vit_pretrained.pt"))
+        # Load pretrained weights using the new method
+        pretrained_model.load_weights("masked_vit_pretrained.pt")
 
         # Replace the decoder with a classification head
         classification_head = nn.Sequential(
@@ -434,3 +440,15 @@ if __name__ == "__main__":
         sample_image = torch.randn(1, 3, 224, 224).to(device)
         logits, _, _ = pretrained_model(sample_image)
         print(f"Classification output shape: {logits.shape}")
+
+    # Call the training function to train the model and save weights
+    print("Starting model training...")
+    train_masked_vit()
+    print(
+        "Training complete! Model weights have been saved to 'masked_vit_pretrained.pt'"
+    )
+
+
+# Example usage
+if __name__ == "__main__":
+    main()

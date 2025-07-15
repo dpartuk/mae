@@ -39,6 +39,7 @@ class UNETEvaluator:
                                          dataset_train.patient_ids)
 
     def evaluate(self):
+        print("Evaluating...")
         evaluator = SegmentationEvaluator(self.model_runner.pipeline)
 
         # Run full eval
