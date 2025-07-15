@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
@@ -80,6 +81,7 @@ class SegmentationEvaluator:
             num_examples (int): Number of examples to show.
             seed (int or None): Random seed for reproducibility.
         """
+        ppid = os.getppid()
         if seed is not None:
             np.random.seed(seed)
 
@@ -108,4 +110,5 @@ class SegmentationEvaluator:
             plt.axis('off')
 
         plt.tight_layout()
+        plt.savefig(f'dice_scores_output_{ppid}.png')
         plt.show()

@@ -1,3 +1,4 @@
+import os
 import matplotlib.pyplot as plt
 from ct_dataset import CTDataset
 from UNet_Model.unet_segmentation_pipeline import UNetSegmentationPipeline
@@ -69,5 +70,6 @@ class UNETRunner:
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
+        plt.savefig(f'training_history_output_{ppid}.png')
         plt.show()
 
