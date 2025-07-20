@@ -5,16 +5,26 @@ from UNet_Model.segmentation_evaluator import SegmentationEvaluator
 import numpy as np
 
 class UNETEvaluator:
-    def __init__(self, dataset_train, model_runner):
+    def __init__(self, dataset_train, model_runner, finetune = False):
         self.dataset = dataset_train
         self.model_runner = model_runner
 
-        X_train = dataset_train.X_train_masked
-        Y_train = dataset_train.X_train
-        X_val = dataset_train.X_val_masked
-        Y_val = dataset_train.X_val
-        self.X_test = dataset_train.X_test_masked
-        self.Y_test = dataset_train.X_test
+        if finetune:
+            self.X_test = dataset_train.X_test
+            self.Y_test = dataset_train.Y_test
+
+            self.shortcut_sliced_patient_ids(dataset_train.images,
+                                             dataset_train.labels,
+                                             dataset_train.test_idx,
+                                             dataset_train.patient_ids)
+        else:
+            self.X_test = dataset_train.X_test_masked
+            self.Y_test = dataset_train.X_test
+
+            self.shortcut_sliced_patient_ids(dataset_train.images,
+                                             dataset_train.labels,
+                                             dataset_train.test_idx,
+                                             dataset_train.patient_ids)
 
         # print("total patients for testing:", len(dataset_train.test_idx))
         # patient_ids_test = [dataset_train.patient_ids[i] for i in dataset_train.test_idx]
@@ -33,10 +43,7 @@ class UNETEvaluator:
         # print("Len slice_patient_ids: ", len(self.slice_patient_ids))
         # print("slice_patient_ids: ", self.slice_patient_ids)
 
-        self.shortcut_sliced_patient_ids(dataset_train.images,
-                                         dataset_train.labels,
-                                         dataset_train.test_idx,
-                                         dataset_train.patient_ids)
+
 
     def evaluate(self):
         print("Evaluating...")

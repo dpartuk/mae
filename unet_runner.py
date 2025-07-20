@@ -4,7 +4,7 @@ from ct_dataset import CTDataset
 from UNet_Model.unet_segmentation_pipeline import UNetSegmentationPipeline
 # from UNet_Model.unet_segmentation_pipeline import UNetSegmentationPipeline
 
-from ct_config import debug, epochs, batch_size, number_of_ct_patients
+from ct_config import debug, epochs, finetune_epochs ,batch_size, number_of_ct_patients
 
 class UNETRunner:
     def __init__(self, dataset_train):
@@ -16,36 +16,57 @@ class UNETRunner:
         self.history = None
         self.dataset = dataset_train
 
-    def train(self):
+    def train(self, finetune=False):
         # epochs = 100
         # batch_size = 128
-        X_train = self.dataset.X_train_masked
-        Y_train = self.dataset.X_train
-        X_val = self.dataset.X_val_masked
-        Y_val = self.dataset.X_val
+        if finetune:
+            X_train = self.dataset.X_train
+            Y_train = self.dataset.Y_train
+            if True: # REMOVE this section after finishing development of prediction. Using smaller dataset
+                X_train = self.dataset.X_test
+                Y_train = self.dataset.Y_test
+            X_val = self.dataset.X_val
+            Y_val = self.dataset.Y_val
+            epoch_num = finetune_epochs
+        else:
+            X_train = self.dataset.X_train_masked
+            Y_train = self.dataset.X_train
+            X_val = self.dataset.X_val_masked
+            Y_val = self.dataset.X_val
+            epoch_num = epochs
 
-        self.history = self.pipeline.fit(X_train, Y_train, X_val, Y_val, epochs=epochs, batch_size=batch_size, verbose=2)
+        self.history = self.pipeline.fit(X_train, Y_train, X_val, Y_val, epochs=epoch_num, batch_size=batch_size, verbose=2)
 
         test_score = self.pipeline.evaluate(X_val, Y_val)
         print("Validation Dice and IoU:", test_score)
 
-    def save_run(self):
+    def save_run(self, finetune=False):
         # Saving the pipeline model
-        model_name = f"UNet_Model/saved_models/unet_ssl_ct_liver_{number_of_ct_patients}.keras"
+        if finetune:
+            epoch_num = finetune_epochs
+            model_name = f"UNet_Model/saved_models/unet_finetune_ct_liver_{number_of_ct_patients}_{epoch_num}.keras"
+            file_history_name = f"UNet_Model/saved_models/unet_finetune_ct_history_{number_of_ct_patients}_{epoch_num}"
+        else:
+            epoch_num = epochs
+            model_name = f"UNet_Model/saved_models/unet_ssl_ct_liver_{number_of_ct_patients}_{epoch_num}.keras"
+            file_history_name = f"UNet_Model/saved_models/unet_ssl_ct_history_{number_of_ct_patients}_{epoch_num}"
 
         self.pipeline.save(model_name)
-
-        file_history_name = f"UNet_Model/saved_models/unet_ssl_ct_history_{number_of_ct_patients}"
         self.pipeline.save_training_history(self.history, file_history_name, format="json")
 
         history_dict = self.pipeline.load_training_history(file_history_name, format="json")
-
         self.plot_training_history(history_dict, metrics=("loss", "dice_coef", "iou_metric"))
 
 
-    def load_model(self):
+    def load_model(self, finetune=False):
         # Probably already in memory, but maintaining consistency with notebook
-        model_name = f"UNet_Model/saved_models/unet_ssl_ct_liver_{number_of_ct_patients}.keras"
+        if finetune:
+            epoch_num = finetune_epochs
+            model_name = f"UNet_Model/saved_models/unet_finetune_ct_liver_{number_of_ct_patients}_{epoch_num}.keras"
+        else:
+            epoch_num = epochs
+            model_name = f"UNet_Model/saved_models/unet_ssl_ct_liver_{number_of_ct_patients}_{epoch_num}.keras"
+
         self.pipeline = UNetSegmentationPipeline.load(model_name)
         self.pipeline.summary()
 

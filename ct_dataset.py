@@ -1,5 +1,6 @@
 import os
 import torch
+import random
 from torch.utils.data import Dataset
 import nibabel as nib
 import numpy as np
@@ -11,6 +12,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
 from PIL import Image
+
 
 class CTDataset(Dataset):
     def __init__(self, path, transform=None):
@@ -149,6 +151,10 @@ class CTDataset(Dataset):
         train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.2, random_state=42)
         train_idx, val_idx = train_test_split(train_idx, test_size=0.2, random_state=42)
 
+        # print("number_fine_tuned_patients: ", number_fine_tuned_patients)
+        print("train idx: ", train_idx, "Length: ", len(train_idx), type(train_idx))
+        print("test idx: ", test_idx, "Length: ", len(test_idx), type(test_idx))
+        print("val idx: ", val_idx, "Length: ", len(val_idx), type(val_idx))
         # Combine slices from selected patients
         self.X_train = np.concatenate([self.images[i] for i in train_idx])
         self.Y_train = np.concatenate([self.labels[i] for i in train_idx])
@@ -159,6 +165,7 @@ class CTDataset(Dataset):
         self.X_test = np.concatenate([self.images[i] for i in test_idx])
         self.Y_test = np.concatenate([self.labels[i] for i in test_idx])
         self.test_idx = test_idx
+        self.val_idx = val_idx
 
         print("Splits by patients:")
 
@@ -173,6 +180,56 @@ class CTDataset(Dataset):
         # print("Image 0: ", image_0.shape)
         # plt.imshow(image_0.squeeze(), cmap='gray')
         # plt.show()
+
+    def split_finetune(self, number_of_ct_patients):
+        if True: # Remove and stay with else only
+            train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.1, random_state=42)
+        else:
+            train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.2, random_state=42)
+        train_idx = test_idx
+
+        # train_idx = [55, 40, 19, 31, 115, 56, 69, 105, 81, 26, 95, 27, 64, 4, 97, 100, 36, 80, 93, 84, 18, 10, 122, 11,
+        #              127, 45, 70]
+        # Shuffle the list to ensure randomness
+        random.shuffle(train_idx)
+        # Calculate the split index
+        split_index = int(len(train_idx) * 0.8)
+        # Split the list into two parts
+        test_idx = train_idx[split_index:]  # 20% of the data
+        train_idx = train_idx[:split_index]  # 80% of the data
+
+        random.shuffle(train_idx)
+        split_index = int(len(train_idx) * 0.8)
+        val_idx = train_idx[split_index:]
+        train_idx = train_idx[:split_index]  # 80% of the data
+
+        # print("number_fine_tuned_patients: ", number_fine_tuned_patients)
+        print("train idx: ", train_idx, "Length: ", len(train_idx), type(train_idx))
+        print("test idx: ", test_idx, "Length: ", len(test_idx), type(test_idx))
+        print("val idx: ", val_idx, "Length: ", len(val_idx), type(val_idx))
+        # Combine slices from selected patients
+        self.X_train = np.concatenate([self.images[i] for i in train_idx])
+        self.Y_train = np.concatenate([self.labels[i] for i in train_idx])
+
+        self.X_val = np.concatenate([self.images[i] for i in val_idx])
+        self.Y_val = np.concatenate([self.labels[i] for i in val_idx])
+
+        self.X_test = np.concatenate([self.images[i] for i in test_idx])
+        self.Y_test = np.concatenate([self.labels[i] for i in test_idx])
+        self.test_idx = test_idx
+        self.val_idx = val_idx
+
+        print("###### Summary of the dataset")
+        print("Number of patients: ", len(self.patient_ids))
+        print(f"Train X shape: {self.X_train.shape}")
+        print(f"Train Y shape: {self.Y_train.shape}")
+        print(f"Val X shape: {self.X_val.shape}")
+        print(f"Val Y shape: {self.Y_val.shape}")
+        print(f"Test X shape: {self.X_test.shape}")
+        print(f"Test Y shape: {self.Y_test.shape}")
+        print("###### End Summary ##########")
+
+
 
     def test_transform(self):
         index = 0
