@@ -22,9 +22,9 @@ class UNETRunner:
         if finetune:
             X_train = self.dataset.X_train
             Y_train = self.dataset.Y_train
-            if True: # REMOVE this section after finishing development of prediction. Using smaller dataset
-                X_train = self.dataset.X_test
-                Y_train = self.dataset.Y_test
+            # if True: # REMOVE this section after finishing development of prediction. Using smaller dataset
+            #     X_train = self.dataset.X_test
+            #     Y_train = self.dataset.Y_test
             X_val = self.dataset.X_val
             Y_val = self.dataset.Y_val
             epoch_num = finetune_epochs
@@ -93,5 +93,6 @@ class UNETRunner:
         plt.grid(True)
         plt.tight_layout()
         plt.savefig(f'training_history_output_{ppid}.png')
-        plt.show()
+        if debug:
+            plt.show()
 

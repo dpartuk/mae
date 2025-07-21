@@ -174,7 +174,7 @@ class CTDataset(Dataset):
         print("Train Shape: " ,self.X_train.shape, "Validation Shape: ", self.X_val.shape, "Test Shape: ", self.X_test.shape)
 
         # Test image
-        # image_0 = X_train[[0], :, :, :]
+        # image_0 = X_train[[0], :, print_smaples:, :]
         # ct = X[idx, ..., 0]
 
         # print("Image 0: ", image_0.shape)
@@ -182,10 +182,12 @@ class CTDataset(Dataset):
         # plt.show()
 
     def split_finetune(self, number_of_ct_patients):
-        if True: # Remove and stay with else only
-            train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.1, random_state=42)
-        else:
-            train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.2, random_state=42)
+        # if True: # Remove and stay with else only
+        #     train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.1, random_state=42)
+        # else:
+        #     train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.2, random_state=42)
+
+        train_idx, test_idx = train_test_split(range(number_of_ct_patients), test_size=0.2, random_state=42)
         train_idx = test_idx
 
         # train_idx = [55, 40, 19, 31, 115, 56, 69, 105, 81, 26, 95, 27, 64, 4, 97, 100, 36, 80, 93, 84, 18, 10, 122, 11,

@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
+from ct_config import debug
 
 # For Prediction Purpose
 class SegmentationEvaluator:
@@ -111,4 +112,5 @@ class SegmentationEvaluator:
 
         plt.tight_layout()
         plt.savefig(f'dice_scores_output_{ppid}.png')
-        plt.show()
+        if debug:
+            plt.show()
